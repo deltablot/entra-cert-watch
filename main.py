@@ -21,7 +21,7 @@ REQUIRED_SUBJECT_CN = os.environ.get(
     "REQUIRED_SUBJECT_CN", "accounts.accesscontrol.windows.net"
 )
 # the correct cert is not the newest but the one before that
-NTH_NEWEST = int(os.environ.get("NTH_NEWEST", "2"))
+NTH_NEWEST = int(os.environ.get("NTH_NEWEST", "3"))
 
 
 NS = {
@@ -119,19 +119,21 @@ def choose_best_cert(candidates):
     # newest first
     pool.sort(key=lambda t: t[2], reverse=True)
 
-    # need the second one (index 1)
-    if len(pool) < 2:
+    # need the third one (index 1)
+    if len(pool) < 3:
         print(
             f"[WARN] Found {len(pool)} valid cert(s) for CN={REQUIRED_SUBJECT_CN}; need at least 2."
         )
         return None, None
 
-    chosen_b64, chosen_cert, _ = pool[1]
-    return chosen_b64, chosen_cert
+    chosen_b64, chosen_cert, _ = pool[2]
+    # this should be the next valid one
+    next_b64, next_cert, _ = pool[1]
+    return chosen_b64, chosen_cert, next_b64, next_cert
 
 
-def patch_elabftw(new_cert_pem: str):
-    payload = {"x509": new_cert_pem, "x509_new": new_cert_pem}
+def patch_elabftw(new_cert_pem: str, next_cert_pem: str):
+    payload = {"x509": new_cert_pem, "x509_new": next_cert_pem}
     headers = {
         "Authorization": f"{ELABFTW_API_KEY}",
         "Content-Type": "application/json",
@@ -164,7 +166,7 @@ def main():
         return
 
     say(f"[INFO] Found {len(certs)} signing certs in metadata.")
-    best_b64, best_cert = choose_best_cert(certs)
+    best_b64, best_cert, next_b64, next_cert = choose_best_cert(certs)
     if not best_b64:
         print("[ERROR] No currently valid signing certificate found.")
         return
@@ -194,9 +196,10 @@ def main():
     say(f"[INFO] Current cert still valid: {still_valid}")
 
     new_pem = to_pem(best_b64)
+    next_pem = to_pem(next_b64)
     if not still_valid or FORCE_PATCH:
         say("[STEP] Patching eLabFTW with the new cert")
-        patch_elabftw(new_pem)
+        patch_elabftw(new_pem, next_pem)
 
 
 if __name__ == "__main__":
