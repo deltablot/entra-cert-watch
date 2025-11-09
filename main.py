@@ -17,7 +17,11 @@ ELABFTW_API_KEY = os.environ.get("ELABFTW_API_KEY")
 ELABFTW_IDP_ID = os.environ.get("ELABFTW_IDP_ID")
 VERBOSE = os.environ.get("VERBOSE") or False
 FORCE_PATCH = os.environ.get("FORCE_PATCH") or False
-REQUIRED_SUBJECT_CN = os.environ.get("REQUIRED_SUBJECT_CN", "login.microsoftonline.us")
+REQUIRED_SUBJECT_CN = os.environ.get(
+    "REQUIRED_SUBJECT_CN", "accounts.accesscontrol.windows.net"
+)
+# the correct cert is not the newest but the one before that
+NTH_NEWEST = int(os.environ.get("NTH_NEWEST", "2"))
 
 
 NS = {
@@ -97,23 +101,33 @@ def choose_best_cert(candidates):
     Returns tuple (best_b64, cert_obj) or (None, None) if none valid.
     """
     now = dt.datetime.now(dt.timezone.utc)
-    valid = []
+
+    pool = []
+    seen = set()
     for b64 in candidates:
+        if not b64 or b64 in seen:
+            continue
+        seen.add(b64)
         try:
-            c = b64_to_x509(b64)
-            nb, na = cert_validity_window(c)
-            cn = subject_common_name(c)
-            if cn == REQUIRED_SUBJECT_CN and nb <= now <= na:
-                valid.append((b64, c, nb))
+            cert = b64_to_x509(b64)
+            nb, na = cert_validity_window(cert)
+            if nb <= now <= na and subject_common_name(cert) == REQUIRED_SUBJECT_CN:
+                pool.append((b64, cert, nb))
         except Exception:
             continue
 
-    if not valid:
+    # newest first
+    pool.sort(key=lambda t: t[2], reverse=True)
+
+    # need the second one (index 1)
+    if len(pool) < 2:
+        print(
+            f"[WARN] Found {len(pool)} valid cert(s) for CN={REQUIRED_SUBJECT_CN}; need at least 2."
+        )
         return None, None
 
-    # Pick the cert with the most recent NotBefore
-    valid.sort(key=lambda t: t[2], reverse=True)  # t[2] is nb
-    return valid[0][0], valid[0][1]
+    chosen_b64, chosen_cert, _ = pool[1]
+    return chosen_b64, chosen_cert
 
 
 def patch_elabftw(new_cert_pem: str):

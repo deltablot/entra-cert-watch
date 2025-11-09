@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "cryptography>=46.0.3",
+    "lxml>=6.0.2",
     "requests>=2.32.5",
 ]
