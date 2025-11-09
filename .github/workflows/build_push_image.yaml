@@ -40,4 +40,4 @@ jobs:
                 cache-from: type=gha
                 cache-to: type=gha,mode=max
                 tags: |
-                    deltablot/entra-cert-watch:stable
+                    deltablot/entra-cert-watch:latest
