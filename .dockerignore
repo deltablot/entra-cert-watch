@@ -1,0 +1,7 @@
+LICENSE
+README.md
+.env
+.git
+.gitignore
+.ruff_cache
+.venv
