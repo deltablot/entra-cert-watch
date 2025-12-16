@@ -20,6 +20,8 @@ Optional configuration parameters:
 
 `VERBOSE`: 1
 
+`DRY_RUN`: 1
+
 `FORCE_PATCH`: 1
 
 `REQUIRED_SUBJECT_CN`: "login.microsoftonline.us"

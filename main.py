@@ -15,6 +15,7 @@ METADATA_URL = os.environ.get("METADATA_URL")
 ELABFTW_HOST = os.environ.get("ELABFTW_HOST")
 ELABFTW_API_KEY = os.environ.get("ELABFTW_API_KEY")
 ELABFTW_IDP_ID = os.environ.get("ELABFTW_IDP_ID")
+DRY_RUN = os.environ.get("DRY_RUN")
 VERBOSE = os.environ.get("VERBOSE") or False
 FORCE_PATCH = os.environ.get("FORCE_PATCH") or False
 REQUIRED_SUBJECT_CN = os.environ.get(
@@ -134,6 +135,12 @@ def choose_best_cert(candidates):
 
 def patch_elabftw(new_cert_pem: str, next_cert_pem: str):
     payload = {"x509": new_cert_pem, "x509_new": next_cert_pem}
+    if DRY_RUN:
+        print("Dry run: skipping patch request")
+        print(new_cert_pem[-10:])
+        print(next_cert_pem[-10:])
+        return
+
     headers = {
         "Authorization": f"{ELABFTW_API_KEY}",
         "Content-Type": "application/json",
