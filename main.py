@@ -120,25 +120,30 @@ def choose_best_cert(candidates):
     # newest first
     pool.sort(key=lambda t: t[2], reverse=True)
 
+    chosen_b64, chosen_cert, _ = pool[1]
+
     # need the third one (index 1)
     if len(pool) < 3:
         print(
             f"[WARN] Found {len(pool)} valid cert(s) for CN={REQUIRED_SUBJECT_CN}; need at least 2."
         )
-        return None, None
+        return chosen_b64, chosen_cert, None, None
 
-    chosen_b64, chosen_cert, _ = pool[2]
     # this should be the next valid one
     next_b64, next_cert, _ = pool[1]
     return chosen_b64, chosen_cert, next_b64, next_cert
 
 
 def patch_elabftw(new_cert_pem: str, next_cert_pem: str):
-    payload = {"x509": new_cert_pem, "x509_new": next_cert_pem}
+    if next_cert_pem is None:
+        payload = {"x509": new_cert_pem}
+    else:
+        payload = {"x509": new_cert_pem, "x509_new": next_cert_pem}
     if DRY_RUN:
         print("Dry run: skipping patch request")
         print(new_cert_pem[-10:])
-        print(next_cert_pem[-10:])
+        if next_cert_pem is not None:
+            print(next_cert_pem[-10:])
         return
 
     headers = {
@@ -203,7 +208,9 @@ def main():
     say(f"[INFO] Current cert still valid: {still_valid}")
 
     new_pem = to_pem(best_b64)
-    next_pem = to_pem(next_b64)
+    next_pem = None
+    if next_b64 is not None:
+        next_pem = to_pem(next_b64)
     if not still_valid or FORCE_PATCH:
         say("[STEP] Patching eLabFTW with the new cert")
         patch_elabftw(new_pem, next_pem)
